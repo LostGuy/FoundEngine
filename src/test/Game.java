@@ -14,6 +14,7 @@ public class Game extends AbstractGame
 	
 	float x = 0;
 	
+	
 	public static void main(String args[])
 	{
 		GameContainer gc = new GameContainer(new Game());
