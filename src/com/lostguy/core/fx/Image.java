@@ -1,4 +1,4 @@
-package com.lostguy.core.graphics;
+package com.lostguy.core.fx;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -9,6 +9,8 @@ public class Image
 {
 	public int width, height;
 	public int[] pixels;
+	
+	public ShadowType shadowType = ShadowType.NONE;
 	
 	public Image(String path)
 	{

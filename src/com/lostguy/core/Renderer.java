@@ -2,16 +2,25 @@ package com.lostguy.core;
 
 import java.awt.image.DataBufferInt;
 
-import com.lostguy.core.graphics.Font;
-import com.lostguy.core.graphics.Pixel;
-import com.lostguy.core.graphics.Image;
+import com.lostguy.core.fx.Font;
+import com.lostguy.core.fx.Image;
+import com.lostguy.core.fx.ImageTile;
+import com.lostguy.core.fx.Light;
+import com.lostguy.core.fx.Pixel;
+import com.lostguy.core.fx.ShadowType;
 
 public class Renderer
 {
 	private int width, height;
 	private int[] pixels;
 	
+	//For lighting
+	private int[] lightMap;
+	private ShadowType[] lightBlock;
+	
 	private Font font = Font.STANDARD;
+	
+	private int ambientColor = Pixel.getColor(1, 0.1f, 0.1f, 0.1f);
 	
 	public Renderer(GameContainer gameContainer)
 	{
@@ -19,6 +28,9 @@ public class Renderer
 		height = gameContainer.getHeight();
 		
 		pixels = ((DataBufferInt)gameContainer.getWindow().getImage().getRaster().getDataBuffer()).getData();
+		
+		lightMap = new int[pixels.length];
+		lightBlock = new ShadowType[pixels.length];
 	}
 	
 	/**
@@ -30,9 +42,9 @@ public class Renderer
 	 * @param g - green
 	 * @param b = blue
 	 */
-	public void setPixel(int x, int y, int color)
+	public void setPixel(int x, int y, int color, ShadowType lightBlock)
 	{
-		if((x < 0 || x > width || y < 0 || y > height) || color == 0xffff00ff)
+		if((x < 0 || x >= width || y < 0 || y >= height) || color == 0xffff00ff)
 		{
 			return;
 		}
@@ -40,8 +52,32 @@ public class Renderer
 		//Math to get the 2 dimensional location of the pixel from the 1 dimensional array
 		int index = (x + y * width);
 		
-		//Force the cast to round for more accurate colors
 		pixels[index] = color;
+		this.lightBlock[index] = lightBlock;
+	}
+	
+	public ShadowType getLightBlock(int x, int y)
+	{
+		//Test for out of bounds
+		if(x < 0 || x >= width || y < 0 || y >= height)
+		{
+			return ShadowType.TOTAL;
+		}
+		
+		return lightBlock[x + y * width];
+	}
+	
+	public void setLightMap(int x, int y, int color)
+	{
+		if(x < 0 || x >= width || y < 0 || y >= height)
+		{
+			return;
+		}
+		
+		//Math to get the 2 dimensional location of the pixel from the 1 dimensional array
+		int index = (x + y * width);
+		
+		lightMap[index] = Pixel.getMax(color, lightMap[index]);
 	}
 	
 	/**
@@ -49,11 +85,30 @@ public class Renderer
 	 */
 	public void clear()
 	{
-		for(int i = 0; i < width; i++)
+		for(int x = 0; x < width; x++)
 		{
-			for(int j = 0; j < height; j++)
+			for(int y = 0; y < height; y++)
 			{
-				setPixel(i, j, 0xff000000);
+				int index = x + y * width;
+				
+				pixels[index] = 0xff000000;
+				lightMap[index] = ambientColor;
+			}
+		}
+	}
+	
+	/**
+	 * Combines the color maps
+	 */
+	public void combineMaps()
+	{
+		for(int x = 0; x < width; x++)
+		{
+			for(int y = 0; y < height; y++)
+			{
+				int index = x + y * width;
+				
+				setPixel(x, y, Pixel.getLightBlend(pixels[index], lightMap[index], ambientColor), lightBlock[index]);
 			}
 		}
 	}
@@ -70,7 +125,8 @@ public class Renderer
 		{
 			for(int y = 0; y < image.height; y++)
 			{
-				setPixel(x + offX, y + offY, image.pixels[x + y * image.width]);
+				int index = x + y * image.width;
+				setPixel(x + offX, y + offY, image.pixels[index], image.shadowType);
 			}
 		}
 	}
@@ -103,13 +159,154 @@ public class Renderer
 					//Color the pixel in the right location
 					if(font.image.pixels[(x + font.offsets[unicode]) + y * font.image.width] == 0xffffffff)
 					{
-						setPixel(x + offX + offset - 1, y + offY - 1, color);
+						setPixel(x + offX + offset - 1, y + offY - 1, color, ShadowType.NONE);
 					}
 				}
 			}
 			
 			//Increase the offset for the next letter
 			offset += font.widths[unicode];
+		}
+	}
+	
+	/**
+	 * Draws the tile
+	 * @param image - image to draw
+	 * @param offX - offset x
+	 * @param offY - offset y
+	 * @param tileX - x pos
+	 * @param tileY - y pos
+	 */
+	public void drawImageTile(ImageTile image, int offX, int offY, int tileX, int tileY)
+	{
+		for(int x = 0; x < image.tileWidth; x++)
+		{
+			for(int y = 0; y < image.tileHeight; y++)
+			{
+				setPixel(x + offX, y + offY, image.pixels[(x + (tileX * image.tileWidth)) 
+				                                          + (y + (tileY * image.tileHeight)) * image.width],
+				                                          image.shadowType);
+			}
+		}
+	}
+	
+	/**
+	 * Draws light
+	 * @param light
+	 * @param offX
+	 * @param offY
+	 */
+	public void drawLight(Light light, int offX, int offY)
+	{
+		for(int i = 0; i <= light.diameter; i++)
+		{
+			//Scan across top edge
+			drawLightLine(light.radius, light.radius, i, 0, light, offX, offY);
+			
+			//Scan across the bottom
+			drawLightLine(light.radius, light.radius, i, light.diameter, light, offX, offY);
+			
+			//Scan across left edge
+			drawLightLine(light.radius, light.radius, 0, i, light, offX, offY);
+			
+			//Scan across right edge
+			drawLightLine(light.radius, light.radius, light.diameter, i, light, offX, offY);
+		}
+	}
+	
+	/**
+	 * Draws a light line
+	 * @param x0 - x start
+	 * @param y0 - y start
+	 * @param x1 - x end
+	 * @param y1 - y end
+	 * @param light - Light
+	 * @param offX - offset x
+	 * @param offY - offset y
+	 */
+	private void drawLightLine(int x0, int y0, int x1, int y1, Light light, int offX, int offY)
+	{
+		//Difference between x's and y's
+		int dx = Math.abs(x1 - x0);
+		int dy = Math.abs(y1 - y0);
+		
+		int sx = x0 < x1 ? 1 : -1;
+		int sy = y0 < y1 ? 1 : -1;
+		
+		int err = dx - dy;
+		int err2;
+		
+		float power = 1.0f;
+		
+		boolean hit = false;
+		
+		while(true)
+		{
+			//Break if the light value is black
+			if(light.getLightValue(x0, y0) == 0xff000000)
+			{
+				break;
+			}
+			
+			
+			int screenX = x0 - light.radius + offX;
+			int screenY = y0 - light.radius + offY;
+			
+			if(power == 1)
+			{
+				setLightMap(screenX, screenY, light.getLightValue(x0, y0));
+			}
+			else
+			{
+				setLightMap(screenX, screenY, Pixel.getColorPower(light.getLightValue(x0, y0), power));
+			}
+			
+			if(x0 == x1 && y0 == y1)
+			{
+				break;
+			}
+			
+			if(getLightBlock(screenX, screenY) == ShadowType.TOTAL)
+			{
+				break;
+			}
+			
+			if(getLightBlock(screenX, screenY) == ShadowType.FADE)
+			{
+				power -= 0.1f;
+			}
+			
+			if(getLightBlock(screenX, screenY) == ShadowType.HALF && !hit)
+			{
+				power /= 2;
+				hit = true;
+			}
+			
+			if(getLightBlock(screenX, screenY) == ShadowType.NONE && hit)
+			{
+				hit = false;
+			}
+			
+			if(power <= 0.1f)
+			{
+				break;
+			}
+			
+			err2 = 2 * err;
+			
+			//Move on x-axis
+			if(err2 > -1 * dy)
+			{
+				err -= dy;
+				x0 += sx;
+			}
+			
+			//Move on y-axis
+			if(err2 < dx)
+			{
+				err += dx;
+				y0 += sy;
+			}
 		}
 	}
 }

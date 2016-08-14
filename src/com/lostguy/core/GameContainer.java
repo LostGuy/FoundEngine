@@ -103,6 +103,7 @@ public class GameContainer implements Runnable
 			{
 				renderer.clear();
 				game.render(this, renderer);
+				renderer.combineMaps();
 				renderer.drawString("FPS- " + fps, 0xffffffff, 0, 0);
 				window.update();
 				frames++;

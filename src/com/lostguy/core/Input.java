@@ -22,6 +22,8 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	//Buttons for last frame
 	private static boolean [] buttonsLast = new boolean[5];
 	
+	private static int mouseX, mouseY;
+	
 	public Input(GameContainer gameContainer)
 	{
 		this.gameContainer = gameContainer;
@@ -91,11 +93,15 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	@Override
 	public void mouseDragged(MouseEvent e) 
 	{
+		mouseX = (int)(e.getX() / gameContainer.getScale());
+		mouseY = (int)(e.getY() / gameContainer.getScale());
 	}
 
 	@Override
 	public void mouseMoved(MouseEvent e) 
 	{
+		mouseX = (int)(e.getX() / gameContainer.getScale());
+		mouseY = (int)(e.getY() / gameContainer.getScale());
 	}
 
 	@Override
@@ -140,6 +146,14 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	@Override
 	public void keyTyped(KeyEvent e) 
 	{
+	}
+
+	public static int getMouseX() {
+		return mouseX;
+	}
+
+	public static int getMouseY() {
+		return mouseY;
 	}
 	
 }

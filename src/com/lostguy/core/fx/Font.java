@@ -1,4 +1,4 @@
-package com.lostguy.core.graphics;
+package com.lostguy.core.fx;
 
 public enum Font 
 {
