@@ -1,5 +1,9 @@
 package com.lostguy.core;
 
+import java.awt.event.KeyEvent;
+
+import com.lostguy.core.components.Physics;
+
 public class GameContainer implements Runnable
 {
 	private Thread thread;
@@ -21,6 +25,16 @@ public class GameContainer implements Runnable
 	private float scale = 2.0f;
 	private String title = "Found Engine v1.0 by Lost Guy";
 	
+	//Light Stuff
+	private boolean lightingEnabled = false;
+	private boolean drawLights = false;
+	
+	private boolean clearScreen = false;
+	
+	private boolean debug = false;
+	
+	private Physics physics;
+	
 	public GameContainer(AbstractGame game)
 	{
 		this.game = game;
@@ -40,6 +54,8 @@ public class GameContainer implements Runnable
 		window = new Window(this);
 		renderer = new Renderer(this);
 		input = new Input(this);
+		physics = new Physics();
+		
 		thread = new Thread(this);
 		thread.run();
 	}
@@ -86,7 +102,13 @@ public class GameContainer implements Runnable
 			
 			while(unprocessedTime >= frameCap)
 			{
+				if(input.isKeyPressed(KeyEvent.VK_F1))
+				{
+					debug = !debug;
+				}
+				
 				game.update(this, (float)frameCap);
+				physics.update();
 				input.update();
 				unprocessedTime -= frameCap;
 				render = true;
@@ -100,11 +122,29 @@ public class GameContainer implements Runnable
 			}
 			
 			if(render)
-			{
-				renderer.clear();
+			{		
+				if(clearScreen)
+				{
+					renderer.clear();
+				}
+				
 				game.render(this, renderer);
-				renderer.combineMaps();
-				renderer.drawString("FPS- " + fps, 0xffffffff, 0, 0);
+				
+				if(drawLights)
+				{
+					renderer.drawLightArray();
+				}
+				
+				if(lightingEnabled || drawLights)
+				{
+					renderer.flushMaps();
+				}
+				
+				//Debug
+				if(debug)
+				{
+					renderer.drawString("FPS- " + fps, 0xffffffff, 0, 0);
+				}
 				window.update();
 				frames++;
 			}
@@ -131,6 +171,11 @@ public class GameContainer implements Runnable
 	private void cleanup()
 	{
 		window.cleanup();
+	}
+	
+	public void setFrameCap(int num)
+	{
+		frameCap = 1.0 / num;
 	}
 	
 	//Getters and Setters
@@ -168,5 +213,53 @@ public class GameContainer implements Runnable
 
 	public Window getWindow() {
 		return window;
+	}
+
+	public boolean drawLights() {
+		return drawLights;
+	}
+
+	public void setDrawLights(boolean drawLights) {
+		this.drawLights = drawLights;
+	}
+
+	public boolean isLightingEnabled() {
+		return lightingEnabled;
+	}
+
+	public void setLightingEnabled(boolean lightingEnabled) {
+		this.lightingEnabled = lightingEnabled;
+	}
+
+	public boolean isClearScreen() {
+		return clearScreen;
+	}
+
+	public void setClearScreen(boolean clearScreen) {
+		this.clearScreen = clearScreen;
+	}
+
+	public AbstractGame getGame() {
+		return game;
+	}
+
+	public void setGame(AbstractGame game) {
+		this.game = game;
+	}
+
+	public Input getInput() {
+		return input;
+	}
+
+	public void setInput(Input input) {
+		this.input = input;
+	}
+
+	public Physics getPhysics() {
+		return physics;
+	}
+
+	public void setPhysics(Physics physics) {
+		this.physics = physics;
 	}
 }

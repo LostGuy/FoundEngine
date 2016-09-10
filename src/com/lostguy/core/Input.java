@@ -11,18 +11,18 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	private GameContainer gameContainer;
 	
 	//Keys for current frame
-	private static boolean [] keys = new boolean[250];
+	private boolean [] keys = new boolean[250];
 	
 	//Keys for last frame
-	private static boolean [] keysLast = new boolean[250];
+	private boolean [] keysLast = new boolean[250];
 	
 	//Buttons for current frame
-	private static boolean [] buttons = new boolean[5];
+	private boolean [] buttons = new boolean[5];
 	
 	//Buttons for last frame
-	private static boolean [] buttonsLast = new boolean[5];
+	private boolean [] buttonsLast = new boolean[5];
 	
-	private static int mouseX, mouseY;
+	private int mouseX, mouseY;
 	
 	public Input(GameContainer gameContainer)
 	{
@@ -40,7 +40,7 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 		buttonsLast = buttons.clone();
 	}
 	
-	public static boolean isKey(int keyCode)
+	public boolean isKey(int keyCode)
 	{
 		return keys[keyCode];
 	}
@@ -50,7 +50,7 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	 * @param keyCode
 	 * @return
 	 */
-	public static boolean isKeyPressed(int keyCode)
+	public boolean isKeyPressed(int keyCode)
 	{
 		return keys[keyCode] && !keysLast[keyCode];
 	}
@@ -60,12 +60,12 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	 * @param keyCode
 	 * @return
 	 */
-	public static boolean isKeyReleased(int keyCode)
+	public boolean isKeyReleased(int keyCode)
 	{
 		return !keys[keyCode] && keysLast[keyCode];
 	}
 	
-	public static boolean isButton(int button)
+	public boolean isButton(int button)
 	{
 		return buttons[button];
 	}
@@ -75,7 +75,7 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	 * @param button
 	 * @return
 	 */
-	public static boolean isButtonPressed(int button)
+	public boolean isButtonPressed(int button)
 	{
 		return buttons[button] && !buttonsLast[button];
 	}
@@ -85,7 +85,7 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	 * @param button
 	 * @return
 	 */
-	public static boolean isButtonReleased(int button)
+	public boolean isButtonReleased(int button)
 	{
 		return !buttons[button] && buttonsLast[button];
 	}
@@ -148,12 +148,19 @@ public class Input implements KeyListener, MouseListener, MouseMotionListener
 	{
 	}
 
-	public static int getMouseX() {
+	public int getMouseX() {
 		return mouseX;
 	}
+	
+	public void setMouseX(int mouseX) {
+		this.mouseX = mouseX;
+	}
 
-	public static int getMouseY() {
+	public int getMouseY() {
 		return mouseY;
 	}
 	
+	public void setMouseY(int mouseY) {
+		this.mouseY = mouseY;
+	}	
 }

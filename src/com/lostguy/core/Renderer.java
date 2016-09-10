@@ -1,16 +1,20 @@
 package com.lostguy.core;
 
 import java.awt.image.DataBufferInt;
+import java.util.ArrayList;
 
 import com.lostguy.core.fx.Font;
 import com.lostguy.core.fx.Image;
 import com.lostguy.core.fx.ImageTile;
 import com.lostguy.core.fx.Light;
+import com.lostguy.core.fx.LightRequest;
 import com.lostguy.core.fx.Pixel;
 import com.lostguy.core.fx.ShadowType;
 
 public class Renderer
 {
+	private GameContainer gc;
+	
 	private int width, height;
 	private int[] pixels;
 	
@@ -22,8 +26,17 @@ public class Renderer
 	
 	private int ambientColor = Pixel.getColor(1, 0.1f, 0.1f, 0.1f);
 	
+	private ArrayList<LightRequest> lightRequests = new ArrayList<LightRequest>();
+	
+	private int clearColor = 0xff000000;
+	
+	//Translates everything on screen by these coordinates
+	private int transX, transY;
+	
 	public Renderer(GameContainer gameContainer)
 	{
+		this.gc = gameContainer;
+		
 		width = gameContainer.getWidth();
 		height = gameContainer.getHeight();
 		
@@ -44,6 +57,9 @@ public class Renderer
 	 */
 	public void setPixel(int x, int y, int color, ShadowType lightBlock)
 	{
+		x -= transX;
+		y -= transY;
+		
 		if((x < 0 || x >= width || y < 0 || y >= height) || color == 0xffff00ff)
 		{
 			return;
@@ -58,6 +74,9 @@ public class Renderer
 	
 	public ShadowType getLightBlock(int x, int y)
 	{
+		x -= transX;
+		y -= transY;
+		
 		//Test for out of bounds
 		if(x < 0 || x >= width || y < 0 || y >= height)
 		{
@@ -69,6 +88,9 @@ public class Renderer
 	
 	public void setLightMap(int x, int y, int color)
 	{
+		x -= transX;
+		y -= transY;
+		
 		if(x < 0 || x >= width || y < 0 || y >= height)
 		{
 			return;
@@ -81,8 +103,25 @@ public class Renderer
 	}
 	
 	/**
-	 * Clear the screen
+	 * Combines the color maps
 	 */
+	public void flushMaps()
+	{
+		for(int x = 0; x < width; x++)
+		{
+			for(int y = 0; y < height; y++)
+			{
+				int index = x + y * width;
+					
+				setPixel(x, y, Pixel.getLightBlend(pixels[index], lightMap[index], ambientColor), lightBlock[index]);
+					
+				lightMap[index] = ambientColor;
+					
+					
+			}
+		}
+	}
+	
 	public void clear()
 	{
 		for(int x = 0; x < width; x++)
@@ -91,26 +130,22 @@ public class Renderer
 			{
 				int index = x + y * width;
 				
-				pixels[index] = 0xff000000;
-				lightMap[index] = ambientColor;
-			}
+				if(gc.isClearScreen())
+				{
+					pixels[index] = clearColor;
+				}
+			}	
 		}
 	}
 	
-	/**
-	 * Combines the color maps
-	 */
-	public void combineMaps()
+	public void drawLightArray()
 	{
-		for(int x = 0; x < width; x++)
+		for(LightRequest lightRequest : lightRequests)
 		{
-			for(int y = 0; y < height; y++)
-			{
-				int index = x + y * width;
-				
-				setPixel(x, y, Pixel.getLightBlend(pixels[index], lightMap[index], ambientColor), lightBlock[index]);
-			}
+			drawLightRequest(lightRequest.light, lightRequest.x, lightRequest.y);
 		}
+		
+		lightRequests.clear();
 	}
 	
 	/**
@@ -190,13 +225,31 @@ public class Renderer
 		}
 	}
 	
+	public void drawLight(Light light, int offX, int offY)
+	{
+		if(gc.drawLights() || gc.isLightingEnabled())
+		{
+			lightRequests.add(new LightRequest(light, offX, offY));
+		}
+		else
+		{
+			for(int x = 0; x < light.diameter; x++)
+			{
+				for(int y = 0; y < light.diameter; y++)
+				{
+					setLightMap(x + offX, y + offY, light.getLightValue(x, y));
+				}
+			}
+		}
+	}
+	
 	/**
 	 * Draws light
 	 * @param light
 	 * @param offX
 	 * @param offY
 	 */
-	public void drawLight(Light light, int offX, int offY)
+	private void drawLightRequest(Light light, int offX, int offY)
 	{
 		for(int i = 0; i <= light.diameter; i++)
 		{
@@ -308,5 +361,77 @@ public class Renderer
 				y0 += sy;
 			}
 		}
+	}
+	
+	public void drawRect(int offX, int offY, int width, int height, int color, ShadowType sType)
+	{
+		for(int x = 0; x < width; x++)
+		{
+			for(int y = 0; y < height; y++)
+			{
+				setPixel(x + offX, y + offY, color, sType);
+			}
+		}
+	}
+
+	public int getAmbientColor() {
+		return ambientColor;
+	}
+
+	public void setAmbientColor(int ambientColor) {
+		this.ambientColor = ambientColor;
+	}
+
+	public int getClearColor() {
+		return clearColor;
+	}
+
+	public void setClearColor(int clearColor) {
+		this.clearColor = clearColor;
+	}
+
+	public int getTransX() {
+		return transX;
+	}
+
+	public void setTransX(int transX) {
+		this.transX = transX;
+	}
+
+	public int getTransY() {
+		return transY;
+	}
+
+	public void setTransY(int transY) {
+		this.transY = transY;
+	}
+
+	public Font getFont() {
+		return font;
+	}
+
+	public void setFont(Font font) {
+		this.font = font;
+	}
+	
+	//Wrappers
+	public void drawImage(Image image)
+	{
+		drawImage(image, 0, 0);
+	}
+	
+	public void drawImageTile(ImageTile image, int tileX, int tileY)
+	{
+		drawImageTile(image, 0, 0, tileX, tileY);
+	}
+	
+	public void drawLight(Light light)
+	{
+		drawLight(light, 0, 0);
+	}
+	
+	public void drawRect(int offX, int offY, int width, int height, int color)
+	{
+		drawRect(offX, offY, width, height, color, ShadowType.NONE);
 	}
 }
